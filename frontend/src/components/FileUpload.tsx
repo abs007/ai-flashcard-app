@@ -5,7 +5,8 @@ interface FileUploadProps {
     onUploadError: (error: string) => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// If VITE_API_URL is empty, use relative path
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, onUploadError }) => {
     const [isDragging, setIsDragging] = useState(false);
@@ -55,7 +56,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, onUploadError 
 
         setIsUploading(true);
         try {
-            const response = await fetch(`${API_URL}/api/flashcards/process-document`, {
+            const response = await fetch(`${API_BASE}/api/flashcards/process-document`, {
                 method: 'POST',
                 body: formData,
             });
