@@ -22,20 +22,32 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     const handleFileUpload = async (file: File) => {
         const requestId = Math.random().toString(36).substring(7);
-        console.log(`[${requestId}] Starting file upload process`);
+        // DEBUG-CHECKPOINT-A: File upload started
+        console.log('DEBUG-CHECKPOINT-A: Starting file upload process', {
+            requestId,
+            fileName: file.name
+        });
 
         if (file.size > MAX_FILE_SIZE) {
             const error = `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`;
-            console.log(`[${requestId}] File size error:`, error);
+            // DEBUG-CHECKPOINT-B: File size validation failed
+            console.log('DEBUG-CHECKPOINT-B: File size validation failed', {
+                requestId,
+                fileSize: file.size,
+                maxSize: MAX_FILE_SIZE
+            });
             onUploadError(error);
             return;
         }
 
+        // DEBUG-CHECKPOINT-C: Creating FormData
+        console.log('DEBUG-CHECKPOINT-C: Creating FormData', { requestId });
         const formData = new FormData();
         formData.append('file', file, file.name);
 
         // Log form data contents
-        console.log(`[${requestId}] FormData contents:`, {
+        console.log('DEBUG-CHECKPOINT-D: FormData created', {
+            requestId,
             fileName: file.name,
             fileType: file.type,
             fileSize: file.size,
@@ -51,14 +63,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
         try {
             const url = `${API_BASE}/api/flashcards/process-document`;
-            console.log(`[${requestId}] Initiating upload request:`, {
+            // DEBUG-CHECKPOINT-E: Initiating fetch request
+            console.log('DEBUG-CHECKPOINT-E: Initiating fetch request', {
+                requestId,
                 url,
-                method: 'POST',
-                fileDetails: {
-                    name: file.name,
-                    type: file.type,
-                    size: file.size
-                }
+                method: 'POST'
             });
 
             const response = await fetch(url, {
@@ -71,27 +80,43 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 },
             });
 
-            console.log(`[${requestId}] Response received:`, {
+            // DEBUG-CHECKPOINT-F: Received response
+            console.log('DEBUG-CHECKPOINT-F: Received response', {
+                requestId,
                 status: response.status,
                 statusText: response.statusText,
                 headers: Object.fromEntries(response.headers.entries())
             });
 
             const contentType = response.headers.get('content-type');
-            console.log(`[${requestId}] Response content type:`, contentType);
+            // DEBUG-CHECKPOINT-G: Checking response content type
+            console.log('DEBUG-CHECKPOINT-G: Content type check', {
+                requestId,
+                contentType
+            });
 
             let responseData;
             try {
                 const text = await response.text();
-                console.log(`[${requestId}] Raw response:`, text);
+                // DEBUG-CHECKPOINT-H: Raw response received
+                console.log('DEBUG-CHECKPOINT-H: Raw response', {
+                    requestId,
+                    text
+                });
                 responseData = text ? JSON.parse(text) : null;
             } catch (parseError) {
-                console.error(`[${requestId}] Failed to parse response:`, parseError);
+                // DEBUG-CHECKPOINT-I: Response parsing failed
+                console.error('DEBUG-CHECKPOINT-I: Parse error', {
+                    requestId,
+                    error: parseError
+                });
                 throw new Error('Invalid response format');
             }
 
             if (!response.ok) {
-                console.error(`[${requestId}] Request failed:`, {
+                // DEBUG-CHECKPOINT-J: Request failed
+                console.error('DEBUG-CHECKPOINT-J: Request failed', {
+                    requestId,
                     status: response.status,
                     data: responseData
                 });
@@ -99,22 +124,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
             }
 
             if (!contentType?.includes('application/json')) {
-                console.error(`[${requestId}] Unexpected content type:`, contentType);
+                // DEBUG-CHECKPOINT-K: Invalid content type
+                console.error('DEBUG-CHECKPOINT-K: Invalid content type', {
+                    requestId,
+                    contentType
+                });
                 throw new Error('Expected JSON response but got ' + contentType);
             }
 
             if (responseData.success) {
-                console.log(`[${requestId}] Upload successful:`, {
+                // DEBUG-CHECKPOINT-L: Upload successful
+                console.log('DEBUG-CHECKPOINT-L: Success', {
+                    requestId,
                     flashcardsCount: responseData.flashcards.length
                 });
                 setUploadProgress(100);
                 onUploadSuccess(responseData.flashcards);
             } else {
-                console.error(`[${requestId}] Upload failed:`, responseData);
+                // DEBUG-CHECKPOINT-M: Upload failed with error
+                console.error('DEBUG-CHECKPOINT-M: Upload failed', {
+                    requestId,
+                    error: responseData.error
+                });
                 onUploadError(responseData.error || 'Failed to process document');
             }
         } catch (error) {
-            console.error(`[${requestId}] Upload error:`, {
+            // DEBUG-CHECKPOINT-N: Exception caught
+            console.error('DEBUG-CHECKPOINT-N: Exception', {
+                requestId,
                 error,
                 stack: error instanceof Error ? error.stack : undefined
             });
@@ -122,7 +159,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         } finally {
             if (interval) clearInterval(interval);
             setIsUploading(false);
-            console.log(`[${requestId}] Upload process completed`);
+            // DEBUG-CHECKPOINT-O: Process completed
+            console.log('DEBUG-CHECKPOINT-O: Upload process completed', { requestId });
         }
     };
 

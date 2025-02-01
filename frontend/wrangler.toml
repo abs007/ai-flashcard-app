@@ -1,0 +1,6 @@
+[env.local]
+name = "ai-flashcard-app"
+compatibility_date = "2024-02-01"
+
+[vars]
+PERPLEXITY_API_KEY = "your-api-key-here" 

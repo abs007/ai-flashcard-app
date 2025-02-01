@@ -1,9 +1,11 @@
 export const onRequest = async (context) => {
     const traceId = Math.random().toString(36).substring(7);
-    console.log(`[${traceId}] Function entry - onRequest`);
-    console.log(`[${traceId}] Request URL:`, context.request.url);
-    console.log(`[${traceId}] Request method:`, context.request.method);
-    console.log(`[${traceId}] Request headers:`, Object.fromEntries(context.request.headers.entries()));
+    // DEBUG-CHECKPOINT-1: Function entry
+    console.log('DEBUG-CHECKPOINT-1: Function entry', {
+        traceId,
+        url: context.request.url,
+        method: context.request.method
+    });
 
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -14,7 +16,8 @@ export const onRequest = async (context) => {
 
     // Handle CORS preflight
     if (context.request.method === "OPTIONS") {
-        console.log(`[${traceId}] Handling OPTIONS preflight request`);
+        // DEBUG-CHECKPOINT-2: CORS preflight
+        console.log('DEBUG-CHECKPOINT-2: Handling OPTIONS request', { traceId });
         return new Response(null, {
             status: 204,
             headers: corsHeaders
@@ -23,9 +26,11 @@ export const onRequest = async (context) => {
 
     // Only handle POST requests
     if (context.request.method !== "POST") {
-        console.log(`[${traceId}] Method not allowed:`, context.request.method);
-        console.log(`[${traceId}] Expected POST, got:`, context.request.method);
-        console.log(`[${traceId}] Request URL:`, context.request.url);
+        // DEBUG-CHECKPOINT-3: Method not allowed
+        console.log('DEBUG-CHECKPOINT-3: Invalid method', {
+            traceId,
+            method: context.request.method
+        });
         return new Response(JSON.stringify({
             error: "Method not allowed",
             method: context.request.method,
@@ -43,10 +48,18 @@ export const onRequest = async (context) => {
 
     try {
         const contentType = context.request.headers.get('content-type');
-        console.log(`[${traceId}] Content-Type:`, contentType);
+        // DEBUG-CHECKPOINT-4: Content type check
+        console.log('DEBUG-CHECKPOINT-4: Checking content type', {
+            traceId,
+            contentType
+        });
 
         if (!contentType || !contentType.includes('multipart/form-data')) {
-            console.log(`[${traceId}] Invalid Content-Type:`, contentType);
+            // DEBUG-CHECKPOINT-5: Invalid content type
+            console.log('DEBUG-CHECKPOINT-5: Invalid content type', {
+                traceId,
+                contentType
+            });
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Content-Type must be multipart/form-data',
@@ -61,13 +74,17 @@ export const onRequest = async (context) => {
             });
         }
 
-        console.log(`[${traceId}] Attempting to parse form data`);
+        // DEBUG-CHECKPOINT-6: Parsing form data
+        console.log('DEBUG-CHECKPOINT-6: Attempting to parse form data', { traceId });
         const formData = await context.request.formData();
         const file = formData.get('file');
 
         if (!file) {
-            console.log(`[${traceId}] No file found in form data`);
-            console.log(`[${traceId}] Form data keys:`, Array.from(formData.keys()));
+            // DEBUG-CHECKPOINT-7: No file found
+            console.log('DEBUG-CHECKPOINT-7: No file in form data', {
+                traceId,
+                formDataKeys: Array.from(formData.keys())
+            });
             return new Response(JSON.stringify({
                 success: false,
                 error: 'No file uploaded',
@@ -82,17 +99,24 @@ export const onRequest = async (context) => {
             });
         }
 
-        console.log(`[${traceId}] File received:`, {
-            name: file.name,
-            type: file.type,
-            size: file.size
+        // DEBUG-CHECKPOINT-8: File received
+        console.log('DEBUG-CHECKPOINT-8: Processing file', {
+            traceId,
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size
         });
 
         // Convert file to text
         const text = await file.text();
-        console.log('File text length:', text.length);
+        // DEBUG-CHECKPOINT-9: File converted to text
+        console.log('DEBUG-CHECKPOINT-9: File text extracted', {
+            traceId,
+            textLength: text.length
+        });
 
-        // Call Perplexity API
+        // DEBUG-CHECKPOINT-10: Calling Perplexity API
+        console.log('DEBUG-CHECKPOINT-10: Calling AI API', { traceId });
         const response = await fetch('https://api.perplexity.ai/chat/completions', {
             method: 'POST',
             headers: {
@@ -115,10 +139,17 @@ export const onRequest = async (context) => {
         });
 
         if (!response.ok) {
-            console.log('Perplexity API error:', response.status, response.statusText);
+            // DEBUG-CHECKPOINT-11: AI API error
+            console.log('DEBUG-CHECKPOINT-11: AI API error', {
+                traceId,
+                status: response.status,
+                statusText: response.statusText
+            });
             throw new Error(`API request failed: ${response.statusText}`);
         }
 
+        // DEBUG-CHECKPOINT-12: Processing AI response
+        console.log('DEBUG-CHECKPOINT-12: Processing AI response', { traceId });
         const data = await response.json();
         const responseContent = data.choices[0].message.content.trim();
 
@@ -131,9 +162,16 @@ export const onRequest = async (context) => {
         const flashcards = JSON.parse(cleanedContent);
 
         if (!Array.isArray(flashcards)) {
+            // DEBUG-CHECKPOINT-13: Invalid flashcards format
+            console.log('DEBUG-CHECKPOINT-13: Invalid flashcards format', { traceId });
             throw new Error('Response is not an array of flashcards');
         }
 
+        // DEBUG-CHECKPOINT-14: Success
+        console.log('DEBUG-CHECKPOINT-14: Returning flashcards', {
+            traceId,
+            count: flashcards.length
+        });
         return new Response(JSON.stringify({
             success: true,
             flashcards: flashcards.map(card => ({
@@ -151,8 +189,12 @@ export const onRequest = async (context) => {
         });
 
     } catch (error) {
-        console.error(`[${traceId}] Error processing request:`, error);
-        console.error(`[${traceId}] Stack trace:`, error.stack);
+        // DEBUG-CHECKPOINT-15: Error handling
+        console.error('DEBUG-CHECKPOINT-15: Error caught', {
+            traceId,
+            error: error.message,
+            stack: error.stack
+        });
         return new Response(JSON.stringify({
             success: false,
             error: error.message || 'Failed to process document',
