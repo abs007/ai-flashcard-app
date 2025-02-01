@@ -39,19 +39,30 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
         try {
             console.log('Uploading to:', `${API_BASE}/api/flashcards/process-document`);
+            console.log('File details:', {
+                name: file.name,
+                type: file.type,
+                size: file.size
+            });
+
             const response = await fetch(`${API_BASE}/api/flashcards/process-document`, {
                 method: 'POST',
                 body: formData,
                 headers: {
                     'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
             });
+
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
             const contentType = response.headers.get('content-type');
             if (!response.ok) {
                 const errorText = contentType?.includes('application/json')
                     ? (await response.json()).error
                     : await response.text();
+                console.log('Error response:', errorText);
                 throw new Error(errorText || `HTTP error! status: ${response.status}`);
             }
 

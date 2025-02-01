@@ -2,16 +2,18 @@ export const onRequest = async (context) => {
     console.log('Request method:', context.request.method);
     console.log('Request headers:', Object.fromEntries(context.request.headers.entries()));
 
+    const corsHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin, X-Requested-With",
+        "Access-Control-Max-Age": "86400",
+    };
+
     // Handle CORS preflight
     if (context.request.method === "OPTIONS") {
         return new Response(null, {
             status: 204,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Max-Age": "86400",
-            },
+            headers: corsHeaders
         });
     }
 
@@ -21,7 +23,7 @@ export const onRequest = async (context) => {
         return new Response("Method not allowed", {
             status: 405,
             headers: {
-                "Access-Control-Allow-Origin": "*",
+                ...corsHeaders,
                 "Allow": "POST, OPTIONS"
             }
         });
@@ -38,8 +40,8 @@ export const onRequest = async (context) => {
             }), {
                 status: 400,
                 headers: {
+                    ...corsHeaders,
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
                 },
             });
         }
@@ -55,8 +57,8 @@ export const onRequest = async (context) => {
             }), {
                 status: 400,
                 headers: {
+                    ...corsHeaders,
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
                 },
             });
         }
@@ -124,8 +126,8 @@ export const onRequest = async (context) => {
             })),
         }), {
             headers: {
+                ...corsHeaders,
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
             },
         });
 
@@ -138,8 +140,8 @@ export const onRequest = async (context) => {
         }), {
             status: 500,
             headers: {
+                ...corsHeaders,
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
             },
         });
     }
