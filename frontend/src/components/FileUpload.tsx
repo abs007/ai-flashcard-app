@@ -1,51 +1,26 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { DocumentArrowUpIcon } from '@heroicons/react/24/outline';
 
 interface FileUploadProps {
     onUploadSuccess: (flashcards: any[]) => void;
     onUploadError: (error: string) => void;
+    showProgress?: boolean;
 }
 
 // If VITE_API_URL is empty, use relative path
 const API_BASE = import.meta.env.VITE_API_URL || '';
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
-const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, onUploadError }) => {
-    const [isDragging, setIsDragging] = useState(false);
+const FileUpload: React.FC<FileUploadProps> = ({
+    onUploadSuccess,
+    onUploadError,
+    showProgress = true
+}) => {
     const [isUploading, setIsUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(false);
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFileUpload(files[0]);
-        }
-    };
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (files && files.length > 0) {
-            handleFileUpload(files[0]);
-        }
-    };
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const handleFileUpload = async (file: File) => {
-        if (!file.type.match('application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
-            onUploadError('Please upload a PDF or Word document');
-            return;
-        }
-
         if (file.size > MAX_FILE_SIZE) {
             onUploadError(`File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
             return;
@@ -55,6 +30,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, onUploadError 
         formData.append('file', file);
 
         setIsUploading(true);
+        setUploadProgress(0);
+
+        // Start progress simulation
+        const interval = showProgress ? setInterval(() => {
+            setUploadProgress(prev => Math.min(prev + 5, 95));
+        }, 100) : null;
+
         try {
             const response = await fetch(`${API_BASE}/api/flashcards/process-document`, {
                 method: 'POST',
@@ -67,6 +49,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, onUploadError 
 
             const data = await response.json();
             if (data.success) {
+                setUploadProgress(100);
                 onUploadSuccess(data.flashcards);
             } else {
                 onUploadError(data.error || 'Failed to process document');
@@ -74,55 +57,63 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, onUploadError 
         } catch (error) {
             onUploadError('Failed to upload file');
         } finally {
+            if (interval) clearInterval(interval);
             setIsUploading(false);
         }
     };
 
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+        if (acceptedFiles.length > 0) {
+            handleFileUpload(acceptedFiles[0]);
+        }
+    }, []);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'application/pdf': ['.pdf'],
+            'application/msword': ['.doc'],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+        },
+        maxSize: MAX_FILE_SIZE,
+    });
+
     return (
         <div className="max-w-xl mx-auto mt-10">
             <div
-                className={`p-8 border-2 border-dashed rounded-lg transition-colors duration-200 ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
+                {...getRootProps()}
+                className={`p-8 border-2 border-dashed rounded-lg transition-colors duration-200 
+                    ${isDragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400'}`}
             >
-                <input
-                    type="file"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    accept=".pdf,.doc,.docx"
-                />
+                <input {...getInputProps()} />
                 {isUploading ? (
                     <div className="text-center">
-                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent"></div>
                         <p className="mt-2 text-gray-600">Processing your document...</p>
+                        {showProgress && (
+                            <div className="mt-4">
+                                <div className="relative pt-1">
+                                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-primary-200">
+                                        <div
+                                            style={{ width: `${uploadProgress}%` }}
+                                            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary-500 transition-all duration-500"
+                                        />
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xs font-semibold inline-block text-primary-600">
+                                            {uploadProgress}%
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="text-center">
-                        <div className="mb-4">
-                            <svg
-                                className="mx-auto h-12 w-12 text-gray-400"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-                                />
-                            </svg>
-                        </div>
-                        <p className="text-lg text-gray-700 font-medium">
+                        <DocumentArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                        <p className="text-lg text-gray-700 font-medium mt-4">
                             Drag and drop your document here, or{' '}
-                            <button
-                                className="text-blue-500 hover:text-blue-600 font-semibold"
-                                onClick={() => fileInputRef.current?.click()}
-                            >
+                            <button className="text-primary-500 hover:text-primary-600 font-semibold">
                                 browse
                             </button>
                         </p>
