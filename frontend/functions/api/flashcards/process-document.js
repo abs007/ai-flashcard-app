@@ -1,4 +1,4 @@
-export async function onRequestPost(context) {
+export const onRequest = async (context) => {
     // Handle CORS preflight
     if (context.request.method === "OPTIONS") {
         return new Response(null, {
@@ -9,6 +9,17 @@ export async function onRequestPost(context) {
                 "Access-Control-Allow-Headers": "Content-Type",
                 "Access-Control-Max-Age": "86400",
             },
+        });
+    }
+
+    // Only handle POST requests
+    if (context.request.method !== "POST") {
+        return new Response("Method not allowed", {
+            status: 405,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Allow": "POST, OPTIONS"
+            }
         });
     }
 
@@ -102,4 +113,8 @@ export async function onRequestPost(context) {
             },
         });
     }
-} 
+};
+
+export default {
+    onRequest
+}; 

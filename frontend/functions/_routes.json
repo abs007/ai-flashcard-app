@@ -6,5 +6,9 @@
     "exclude": [
         "/*",
         "/assets/*"
+    ],
+    "methods": [
+        "POST",
+        "OPTIONS"
     ]
 }
