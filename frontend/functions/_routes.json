@@ -1,9 +1,10 @@
 {
     "version": 1,
     "include": [
-        "/api/*"
+        "/api/flashcards/process-document"
     ],
     "exclude": [
-        "/*"
+        "/*",
+        "/assets/*"
     ]
 }

@@ -1,4 +1,17 @@
 export async function onRequestPost(context) {
+    // Handle CORS preflight
+    if (context.request.method === "OPTIONS") {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Max-Age": "86400",
+            },
+        });
+    }
+
     try {
         const formData = await context.request.formData();
         const file = formData.get('file');
@@ -11,6 +24,7 @@ export async function onRequestPost(context) {
                 status: 400,
                 headers: {
                     'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
                 },
             });
         }
@@ -71,6 +85,7 @@ export async function onRequestPost(context) {
         }), {
             headers: {
                 'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
             },
         });
 
@@ -83,6 +98,7 @@ export async function onRequestPost(context) {
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
             },
         });
     }
