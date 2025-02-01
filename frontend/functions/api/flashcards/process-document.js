@@ -1,4 +1,7 @@
 export const onRequest = async (context) => {
+    console.log('Request method:', context.request.method);
+    console.log('Request headers:', Object.fromEntries(context.request.headers.entries()));
+
     // Handle CORS preflight
     if (context.request.method === "OPTIONS") {
         return new Response(null, {
@@ -14,6 +17,7 @@ export const onRequest = async (context) => {
 
     // Only handle POST requests
     if (context.request.method !== "POST") {
+        console.log('Method not allowed:', context.request.method);
         return new Response("Method not allowed", {
             status: 405,
             headers: {
@@ -24,10 +28,27 @@ export const onRequest = async (context) => {
     }
 
     try {
+        const contentType = context.request.headers.get('content-type');
+        console.log('Content-Type:', contentType);
+
+        if (!contentType || !contentType.includes('multipart/form-data')) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Content-Type must be multipart/form-data'
+            }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                },
+            });
+        }
+
         const formData = await context.request.formData();
         const file = formData.get('file');
 
         if (!file) {
+            console.log('No file in request');
             return new Response(JSON.stringify({
                 success: false,
                 error: 'No file uploaded'
@@ -40,8 +61,15 @@ export const onRequest = async (context) => {
             });
         }
 
+        console.log('File received:', {
+            name: file.name,
+            type: file.type,
+            size: file.size
+        });
+
         // Convert file to text
         const text = await file.text();
+        console.log('File text length:', text.length);
 
         // Call Perplexity API
         const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -66,6 +94,7 @@ export const onRequest = async (context) => {
         });
 
         if (!response.ok) {
+            console.log('Perplexity API error:', response.status, response.statusText);
             throw new Error(`API request failed: ${response.statusText}`);
         }
 
@@ -105,6 +134,7 @@ export const onRequest = async (context) => {
         return new Response(JSON.stringify({
             success: false,
             error: error.message || 'Failed to process document',
+            details: error.stack
         }), {
             status: 500,
             headers: {

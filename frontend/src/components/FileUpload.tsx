@@ -27,7 +27,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', file, file.name);
 
         setIsUploading(true);
         setUploadProgress(0);
@@ -38,13 +38,25 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }, 100) : null;
 
         try {
+            console.log('Uploading to:', `${API_BASE}/api/flashcards/process-document`);
             const response = await fetch(`${API_BASE}/api/flashcards/process-document`, {
                 method: 'POST',
                 body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                },
             });
 
+            const contentType = response.headers.get('content-type');
             if (!response.ok) {
-                throw new Error('Upload failed');
+                const errorText = contentType?.includes('application/json')
+                    ? (await response.json()).error
+                    : await response.text();
+                throw new Error(errorText || `HTTP error! status: ${response.status}`);
+            }
+
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Expected JSON response but got ' + contentType);
             }
 
             const data = await response.json();
@@ -55,7 +67,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 onUploadError(data.error || 'Failed to process document');
             }
         } catch (error) {
-            onUploadError('Failed to upload file');
+            console.error('Upload error:', error);
+            onUploadError(error instanceof Error ? error.message : 'Failed to upload file');
         } finally {
             if (interval) clearInterval(interval);
             setIsUploading(false);
@@ -76,6 +89,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
         },
         maxSize: MAX_FILE_SIZE,
+        multiple: false
     });
 
     return (
