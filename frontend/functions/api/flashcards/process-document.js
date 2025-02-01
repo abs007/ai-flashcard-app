@@ -1,6 +1,9 @@
 export const onRequest = async (context) => {
-    console.log('Request method:', context.request.method);
-    console.log('Request headers:', Object.fromEntries(context.request.headers.entries()));
+    const traceId = Math.random().toString(36).substring(7);
+    console.log(`[${traceId}] Function entry - onRequest`);
+    console.log(`[${traceId}] Request URL:`, context.request.url);
+    console.log(`[${traceId}] Request method:`, context.request.method);
+    console.log(`[${traceId}] Request headers:`, Object.fromEntries(context.request.headers.entries()));
 
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -11,6 +14,7 @@ export const onRequest = async (context) => {
 
     // Handle CORS preflight
     if (context.request.method === "OPTIONS") {
+        console.log(`[${traceId}] Handling OPTIONS preflight request`);
         return new Response(null, {
             status: 204,
             headers: corsHeaders
@@ -19,11 +23,19 @@ export const onRequest = async (context) => {
 
     // Only handle POST requests
     if (context.request.method !== "POST") {
-        console.log('Method not allowed:', context.request.method);
-        return new Response("Method not allowed", {
+        console.log(`[${traceId}] Method not allowed:`, context.request.method);
+        console.log(`[${traceId}] Expected POST, got:`, context.request.method);
+        console.log(`[${traceId}] Request URL:`, context.request.url);
+        return new Response(JSON.stringify({
+            error: "Method not allowed",
+            method: context.request.method,
+            allowedMethods: ["POST", "OPTIONS"],
+            traceId
+        }), {
             status: 405,
             headers: {
                 ...corsHeaders,
+                "Content-Type": "application/json",
                 "Allow": "POST, OPTIONS"
             }
         });
@@ -31,12 +43,15 @@ export const onRequest = async (context) => {
 
     try {
         const contentType = context.request.headers.get('content-type');
-        console.log('Content-Type:', contentType);
+        console.log(`[${traceId}] Content-Type:`, contentType);
 
         if (!contentType || !contentType.includes('multipart/form-data')) {
+            console.log(`[${traceId}] Invalid Content-Type:`, contentType);
             return new Response(JSON.stringify({
                 success: false,
-                error: 'Content-Type must be multipart/form-data'
+                error: 'Content-Type must be multipart/form-data',
+                receivedContentType: contentType,
+                traceId
             }), {
                 status: 400,
                 headers: {
@@ -46,14 +61,18 @@ export const onRequest = async (context) => {
             });
         }
 
+        console.log(`[${traceId}] Attempting to parse form data`);
         const formData = await context.request.formData();
         const file = formData.get('file');
 
         if (!file) {
-            console.log('No file in request');
+            console.log(`[${traceId}] No file found in form data`);
+            console.log(`[${traceId}] Form data keys:`, Array.from(formData.keys()));
             return new Response(JSON.stringify({
                 success: false,
-                error: 'No file uploaded'
+                error: 'No file uploaded',
+                formDataKeys: Array.from(formData.keys()),
+                traceId
             }), {
                 status: 400,
                 headers: {
@@ -63,7 +82,7 @@ export const onRequest = async (context) => {
             });
         }
 
-        console.log('File received:', {
+        console.log(`[${traceId}] File received:`, {
             name: file.name,
             type: file.type,
             size: file.size
@@ -132,11 +151,13 @@ export const onRequest = async (context) => {
         });
 
     } catch (error) {
-        console.error('Error processing request:', error);
+        console.error(`[${traceId}] Error processing request:`, error);
+        console.error(`[${traceId}] Stack trace:`, error.stack);
         return new Response(JSON.stringify({
             success: false,
             error: error.message || 'Failed to process document',
-            details: error.stack
+            details: error.stack,
+            traceId
         }), {
             status: 500,
             headers: {

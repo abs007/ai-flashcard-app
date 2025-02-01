@@ -21,68 +21,108 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const [uploadProgress, setUploadProgress] = useState(0);
 
     const handleFileUpload = async (file: File) => {
+        const requestId = Math.random().toString(36).substring(7);
+        console.log(`[${requestId}] Starting file upload process`);
+
         if (file.size > MAX_FILE_SIZE) {
-            onUploadError(`File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+            const error = `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`;
+            console.log(`[${requestId}] File size error:`, error);
+            onUploadError(error);
             return;
         }
 
         const formData = new FormData();
         formData.append('file', file, file.name);
 
+        // Log form data contents
+        console.log(`[${requestId}] FormData contents:`, {
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            formDataKeys: Array.from(formData.keys())
+        });
+
         setIsUploading(true);
         setUploadProgress(0);
 
-        // Start progress simulation
         const interval = showProgress ? setInterval(() => {
             setUploadProgress(prev => Math.min(prev + 5, 95));
         }, 100) : null;
 
         try {
-            console.log('Uploading to:', `${API_BASE}/api/flashcards/process-document`);
-            console.log('File details:', {
-                name: file.name,
-                type: file.type,
-                size: file.size
+            const url = `${API_BASE}/api/flashcards/process-document`;
+            console.log(`[${requestId}] Initiating upload request:`, {
+                url,
+                method: 'POST',
+                fileDetails: {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size
+                }
             });
 
-            const response = await fetch(`${API_BASE}/api/flashcards/process-document`, {
+            const response = await fetch(url, {
                 method: 'POST',
                 body: formData,
                 headers: {
                     'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Request-ID': requestId
                 },
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log(`[${requestId}] Response received:`, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries())
+            });
 
             const contentType = response.headers.get('content-type');
-            if (!response.ok) {
-                const errorText = contentType?.includes('application/json')
-                    ? (await response.json()).error
-                    : await response.text();
-                console.log('Error response:', errorText);
-                throw new Error(errorText || `HTTP error! status: ${response.status}`);
+            console.log(`[${requestId}] Response content type:`, contentType);
+
+            let responseData;
+            try {
+                const text = await response.text();
+                console.log(`[${requestId}] Raw response:`, text);
+                responseData = text ? JSON.parse(text) : null;
+            } catch (parseError) {
+                console.error(`[${requestId}] Failed to parse response:`, parseError);
+                throw new Error('Invalid response format');
             }
 
-            if (!contentType || !contentType.includes('application/json')) {
+            if (!response.ok) {
+                console.error(`[${requestId}] Request failed:`, {
+                    status: response.status,
+                    data: responseData
+                });
+                throw new Error(responseData?.error || `HTTP error! status: ${response.status}`);
+            }
+
+            if (!contentType?.includes('application/json')) {
+                console.error(`[${requestId}] Unexpected content type:`, contentType);
                 throw new Error('Expected JSON response but got ' + contentType);
             }
 
-            const data = await response.json();
-            if (data.success) {
+            if (responseData.success) {
+                console.log(`[${requestId}] Upload successful:`, {
+                    flashcardsCount: responseData.flashcards.length
+                });
                 setUploadProgress(100);
-                onUploadSuccess(data.flashcards);
+                onUploadSuccess(responseData.flashcards);
             } else {
-                onUploadError(data.error || 'Failed to process document');
+                console.error(`[${requestId}] Upload failed:`, responseData);
+                onUploadError(responseData.error || 'Failed to process document');
             }
         } catch (error) {
-            console.error('Upload error:', error);
+            console.error(`[${requestId}] Upload error:`, {
+                error,
+                stack: error instanceof Error ? error.stack : undefined
+            });
             onUploadError(error instanceof Error ? error.message : 'Failed to upload file');
         } finally {
             if (interval) clearInterval(interval);
             setIsUploading(false);
+            console.log(`[${requestId}] Upload process completed`);
         }
     };
 
