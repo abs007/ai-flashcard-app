@@ -9,7 +9,7 @@
     "scripts": {
         "start": "npm run start:frontend",
         "start:frontend": "npm run start --workspace=frontend",
-        "dev": "npm run dev:frontend",
+        "dev": "netlify dev",
         "dev:frontend": "npm run dev --workspace=frontend",
         "build": "cd frontend && npm install && npm run build"
     },
