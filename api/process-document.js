@@ -1,4 +1,5 @@
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+// Use require for node-fetch in CommonJS
+const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
     // Handle CORS
@@ -70,12 +71,20 @@ exports.handler = async (event, context) => {
         }
 
         const aiResponse = await response.json();
-        const flashcards = JSON.parse(
-            aiResponse.choices[0].message.content.trim()
+        let flashcards;
+
+        try {
+            // Try to parse the content directly first
+            flashcards = JSON.parse(aiResponse.choices[0].message.content);
+        } catch (parseError) {
+            // If direct parsing fails, try cleaning the string first
+            const cleanContent = aiResponse.choices[0].message.content
+                .trim()
                 .replace(/^```json\s*/, '')
                 .replace(/\s*```$/, '')
-                .trim()
-        );
+                .trim();
+            flashcards = JSON.parse(cleanContent);
+        }
 
         if (!Array.isArray(flashcards)) {
             throw new Error('Invalid flashcards format');
@@ -94,10 +103,12 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
+        console.error('Error:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({
-                error: error.message || 'Failed to process document'
+                error: error.message || 'Failed to process document',
+                details: error.stack
             }),
             headers: {
                 'Content-Type': 'application/json',
