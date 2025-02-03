@@ -1,0 +1,9 @@
+{
+    "name": "ai-flashcard-api",
+    "version": "1.0.0",
+    "description": "Serverless functions for AI Flashcard Generator",
+    "main": "process-document.js",
+    "dependencies": {
+        "node-fetch": "^2.6.9"
+    }
+}
