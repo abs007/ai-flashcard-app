@@ -4,17 +4,17 @@
     "description": "AI-powered flashcard learning application",
     "private": true,
     "workspaces": [
-        "frontend",
-        "backend"
+        "frontend"
     ],
     "scripts": {
-        "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
+        "start": "npm run start:frontend",
         "start:frontend": "npm run start --workspace=frontend",
-        "start:backend": "npm run start --workspace=backend",
-        "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+        "dev": "npm run dev:frontend",
         "dev:frontend": "npm run dev --workspace=frontend",
-        "dev:backend": "npm run dev --workspace=backend",
         "build": "cd frontend && npm install && npm run build"
+    },
+    "dependencies": {
+        "node-fetch": "^2.6.9"
     },
     "devDependencies": {
         "concurrently": "^8.2.2"
