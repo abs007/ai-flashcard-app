@@ -26,9 +26,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
             return;
         }
 
-        const formData = new FormData();
-        formData.append('file', file, file.name);
-
         setIsUploading(true);
         setUploadProgress(0);
 
@@ -37,32 +34,25 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }, 100) : null;
 
         try {
-            const url = `${API_BASE}/api/flashcards/process-document`;
-            const response = await fetch(url, {
+            // Read file content
+            const fileContent = await file.text();
+
+            const response = await fetch(`${API_BASE}/.netlify/functions/process-document`, {
                 method: 'POST',
-                body: formData,
                 headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({
+                    fileContent,
+                    fileName: file.name,
+                    fileType: file.type
+                })
             });
 
-            const contentType = response.headers.get('content-type');
-            let responseData;
-
-            try {
-                const text = await response.text();
-                responseData = text ? JSON.parse(text) : null;
-            } catch (parseError) {
-                throw new Error('Invalid response format');
-            }
+            const responseData = await response.json();
 
             if (!response.ok) {
-                throw new Error(responseData?.error || `HTTP error! status: ${response.status}`);
-            }
-
-            if (!contentType?.includes('application/json')) {
-                throw new Error('Expected JSON response but got ' + contentType);
+                throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
             }
 
             if (responseData.success) {

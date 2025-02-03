@@ -1,14 +1,9 @@
 {
     "version": 1,
     "include": [
-        "/api/flashcards/process-document*"
+        "/api/*"
     ],
     "exclude": [
-        "/*",
-        "/assets/*"
-    ],
-    "methods": [
-        "POST",
-        "OPTIONS"
+        "/*"
     ]
 }
